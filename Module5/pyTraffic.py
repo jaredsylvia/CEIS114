@@ -47,15 +47,17 @@ def publish(client, message):
         
 def crosswalk(direction):
     client = connect_mqtt()
+    timer = 10
     if(direction == 'nsCross'):
-        timer = 10
-    while timer:
-        print(str(timer), 'seconds until light change.')
-        time.sleep(1)
-        timer -= 1
-    publish(client, 'ns')
+        
+        while timer:
+            print(str(timer), 'seconds until light change.')
+            time.sleep(1)
+            timer -= 1
+        publish(client, 'ns')
+    
     if(direction == 'ewCross'):
-        timer = 10
+        
         while timer:
             print(str(timer), 'seconds until light change.')
             time.sleep(1)
