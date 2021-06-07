@@ -29,20 +29,9 @@ def subscribe(client: mqtt_client):
     def on_message(client, userdata, msg):
         payload = msg.payload.decode()
         print(f"Received `{payload}` from `{msg.topic}` topic")
-        if(payload == 'nsCross'):
-            timer = 10
-            while timer:
-                print(str(timer), 'seconds until light change.')
-                time.sleep(1)
-                timer -= 1
-            publish(client, 'ns')
-        if(payload == 'ewCross'):
-            timer = 10
-            while timer:
-                print(str(timer), 'seconds until light change.')
-                time.sleep(1)
-                timer -= 1
-            publish(client, 'ew')
+        if('Cross' in payload):
+            crosswalk(payload)
+            
     client.subscribe(statusTopic)
     client.on_message = on_message
     
@@ -57,6 +46,21 @@ def publish(client, message):
         print(f"Failed to send message to topic {controlTopic}")
         
 def crosswalk(direction):
+    client = connect_mqtt()
+    if(direction == 'nsCross'):
+        timer = 10
+    while timer:
+        print(str(timer), 'seconds until light change.')
+        time.sleep(1)
+        timer -= 1
+    publish(client, 'ns')
+    if(direction == 'ewCross'):
+        timer = 10
+        while timer:
+            print(str(timer), 'seconds until light change.')
+            time.sleep(1)
+            timer -= 1
+        publish(client, 'ew')
     print(direction)
     
         
