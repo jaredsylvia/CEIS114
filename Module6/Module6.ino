@@ -2,8 +2,8 @@
 #include "PubSubClient.h"
 #include "LiquidCrystal_I2C.h"
 
-const char* ssid = "INSERTSSID";
-const char* passphrase = "INSERTPASSPHRASE";
+const char* ssid = "SSID";
+const char* passphrase = "PASSPHRASE";
 
 const char* mqtt_server = "10.10.0.1";
 const char* sub_channel = "ceis114/trafficLight/control";
@@ -26,14 +26,20 @@ const int nsGreen = 14;
 const int ewRed = 4;
 const int ewYellow = 5;
 const int ewGreen = 18;
+const int buzPin = 34;
 
 const int nsCrossing = 27;
 const int ewCrossing = 23;
+
+int freq = 2000;
+int channel = 0;
+int resolution = 8;
 
 
 String crossing = "no";
 String trafficDirection = "ns";
 String newDirection = "ns";
+int notify;
 
 unsigned long yellowTimer = 1000;
 unsigned long redTimer = 1000;
@@ -62,8 +68,12 @@ void setup() {
   pinMode(ewRed, OUTPUT);
   pinMode(ewYellow, OUTPUT);
   pinMode(ewGreen, OUTPUT);
+  pinMode(buzPin, OUTPUT);
   pinMode(ewCrossing, INPUT_PULLUP);
   pinMode(nsCrossing, INPUT_PULLUP);
+
+  //ledcSetup(channel, freq, resolution);
+  //ledcAttachPin(buzPin, channel);
   
   
   digitalWrite(nsRed, HIGH);
@@ -172,6 +182,11 @@ void lights() {
       digitalWrite(ewRed, HIGH);
       digitalWrite(ewYellow, LOW);
       digitalWrite(ewGreen, LOW);
+      if(notify == 1) {
+        client.publish(pub_channel, "nsFlow");
+        client.publish(pub_channel, "ewStop");
+        notify = 0;
+      }
   }
 
   
@@ -191,6 +206,11 @@ void lights() {
       digitalWrite(nsRed, HIGH);
       digitalWrite(nsYellow, LOW);
       digitalWrite(nsGreen, LOW);
+      if(notify == 1) {
+        client.publish(pub_channel, "ewFlow");
+        client.publish(pub_channel, "nsStop");
+        notify = 0;
+      }
   }
   
  } else if(trafficDirection == "4way"){
@@ -212,6 +232,11 @@ void lights() {
     digitalWrite(nsRed, HIGH);
     digitalWrite(ewRed, HIGH);
     changeTime = millis();
+    if(notify == 1) {
+        client.publish(pub_channel, "4wayStop");
+        
+        notify = 0;
+      }
   }
 
   if(digitalRead(nsRed) == LOW and digitalRead(ewRed) == LOW and millis() - fourWayTimer >= changeTime){
@@ -230,20 +255,18 @@ void lights() {
 void changeLights(String flowDirection) {
   if(flowDirection == "ns" and trafficDirection != "ns"){
     trafficDirection = "ns";
-    client.publish(pub_channel, "nsFlow");
-    client.publish(pub_channel, "ewStop");
+    notify = 1;
     changeTime = millis();
     
     
   } else if(flowDirection == "ew" and trafficDirection != "ew"){
     trafficDirection = "ew";
-    client.publish(pub_channel, "ewFlow");
-    client.publish(pub_channel, "nsStop");
+    notify = 1;
     changeTime = millis();
     
   } else if(flowDirection =="4way" and trafficDirection != "4way") {
     trafficDirection = "4way";
-    client.publish(pub_channel, "4wayStop");
+    notify = 1;
     changeTime= millis();
     
   }
@@ -276,15 +299,20 @@ void loop() {
 
   lights();
 
+  if(digitalRead(nsYellow) == HIGH or digitalRead(ewYellow) == HIGH) {
+    //ledcWriteTone(channel, freq);
+    digitalWrite(buzPin, HIGH);
+ } else if(digitalRead(nsYellow) != HIGH and digitalRead(ewYellow) != HIGH) {
+    
+    digitalWrite(buzPin, LOW);
+ }
   
- if(digitalRead(nsCrossing) == LOW){
+  if(digitalRead(nsCrossing) == LOW){
     client.publish(pub_channel, "nsCross");
-    line0Update("North/South");
     delay(500);
   }
   if(digitalRead(ewCrossing) == LOW){
     client.publish(pub_channel, "ewCross");
-    line0Update("East/West");
     delay(500);
   }
   

@@ -25,13 +25,15 @@ client_idPub = 'pythonTrafficLightPub'
 def connect_mqtt(client_id, broker, port):
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print("Connected to MQTT Broker!")
+            print(str(client_id), "is connected to MQTT Broker!")
+            
         else:
-            print("Failed to connect, return code %d\n", rc)
+            print(str(client_id), "failed to connect, return code %d\n", rc)
     # Set Connecting Client ID
     client = mqtt_client.Client(client_id)
     client.on_connect = on_connect
     client.connect(broker, port)
+    
     return client
 
 def subscribe(client: mqtt_client):
@@ -40,22 +42,23 @@ def subscribe(client: mqtt_client):
         print(f"Received `{payload}` from `{msg.topic}` topic")
         
         
-        if(payload == 'nsCross'):
-            publish(client, 'North/South', line0Topic)
-            publish(client, 'Don\'t Walk', line1Topic)
-            th.Thread(target=crosswalk(payload, client))    
-        elif(payload == 'ewCross'):
-            publish(client, 'East/West', line0Topic)
-            publish(client, 'Don\'t Walk', line1Topic)
+        if('Cross' in payload):
             th.Thread(target=crosswalk(payload, client))
-        
-            
+        if('Stop' in payload):
+            if(payload == 'nsStop'):
+                publish(clients[1], 'East/West', line0Topic)
+                publish(clients[1], 'Walk', line1Topic)
+            elif(payload == 'ewStop'):
+                publish(clients[1], 'North/South', line0Topic)
+                publish(clients[1], 'Walk', line1Topic)
+               
             
     client.subscribe(statusTopic)
     client.on_message = on_message
     
 
 def publish(client, message, topic):
+    
     time.sleep(1)
     result = client.publish(topic, message)
     status = result[0]
@@ -63,49 +66,52 @@ def publish(client, message, topic):
         print(f"Send `{message}` to topic `{topic}`")
     else:
         print(f"Failed to send message to topic {topic}")
-
+    
+    
+    
 def on_disconnect(client, userdata,rc=0):
     print("DisConnected result code "+str(rc))
     client.loop_stop()
+    
+    
         
     
 def crosswalk(direction, client):
     timer = 10
     
     if(direction == 'nsCross'):
-        
+        publish(clients[1], 'North/South', line0Topic)        
         while timer:
             print(str(timer), 'seconds until light change.')
+            dwalkStr = 'Don\'t Walk ' + str(timer)
+            publish(clients[1], dwalkStr, line1Topic)
             time.sleep(1)
             timer -= 1
-        publish(client, 'ns', controlTopic)
+        publish(clients[1], 'ns', controlTopic)
         
     if(direction == 'ewCross'):
-        
+        publish(clients[1], 'East/West', line0Topic)            
         while timer:
             print(str(timer), 'seconds until light change.')
+            dwalkStr = 'Don\'t Walk ' + str(timer)
+            publish(clients[1], dwalkStr, line1Topic)
             time.sleep(1)
             timer -= 1
-        publish(client, 'ew', controlTopic)
+        publish(clients[1], 'ew', controlTopic)
     print(direction)
     
         
 def run():
     
     for i  in range(nclients):
-        cname ="Client"+str(i)
+        cname ="ceis114client"+str(i)
         client = connect_mqtt(cname, broker, port)
         clients.append(client)
-    for client in clients:
-        client.connect(broker)
-        print(client)
-        
-        #client.loop_start()
-         
-    # subClient = connect_mqtt(client_idSub, broker, port)
-    # pubClient = connect_mqtt(client_idPub, broker, port)
+
+    
     subscribe(clients[0])
     th.Thread(target=clients[0].loop_forever())
+    th.Thread(target=clients[1].loop_forever())
     
 if __name__ == '__main__':
     try:
