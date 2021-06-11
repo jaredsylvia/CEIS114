@@ -2,8 +2,8 @@
 #include "PubSubClient.h"
 #include "LiquidCrystal_I2C.h"
 
-const char* ssid = "Buddy's Danke Meme Stash";
-const char* passphrase = "17o4d0r53t";
+const char* ssid = "INSERTSSID";
+const char* passphrase = "INSERTPASSPHRASE";
 
 const char* mqtt_server = "10.10.0.1";
 const char* sub_channel = "ceis114/trafficLight/control";
