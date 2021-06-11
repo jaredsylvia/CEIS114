@@ -14,9 +14,15 @@ statusTopic = 'ceis114/trafficLight/status'
 controlTopic = 'ceis114/trafficLight/control'
 line0Topic = 'ceis114/trafficLight/line0'
 line1Topic = 'ceis114/trafficLight/line1'
-client_id = 'pythonTrafficLight'
 
-def connect_mqtt():
+clientIDs = []
+clients = []
+nclients=2
+mqtt_client.Client.connected_flag=False
+client_idSub = 'pythonTrafficLightSub'
+client_idPub = 'pythonTrafficLightPub'
+
+def connect_mqtt(client_id, broker, port):
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
             print("Connected to MQTT Broker!")
@@ -33,18 +39,16 @@ def subscribe(client: mqtt_client):
         payload = msg.payload.decode()
         print(f"Received `{payload}` from `{msg.topic}` topic")
         
-        if('Cross' in payload):
-            
-            try:
-                if(payload == 'nsCross'):
-                    publish(client, 'North/South', line0Topic)
-                    publish(client, 'Don\'t Walk', line1Topic)
-                    
-                elif(payload == 'ewCross'):
-                    publish(client, 'East/West', line0Topic)
-                    publish(client, 'Don\'t Walk', line1Topic)
-            finally:                    
-                crosswalk(payload, client)
+        
+        if(payload == 'nsCross'):
+            publish(client, 'North/South', line0Topic)
+            publish(client, 'Don\'t Walk', line1Topic)
+            th.Thread(target=crosswalk(payload, client))    
+        elif(payload == 'ewCross'):
+            publish(client, 'East/West', line0Topic)
+            publish(client, 'Don\'t Walk', line1Topic)
+            th.Thread(target=crosswalk(payload, client))
+        
             
             
     client.subscribe(statusTopic)
@@ -60,7 +64,11 @@ def publish(client, message, topic):
     else:
         print(f"Failed to send message to topic {topic}")
 
+def on_disconnect(client, userdata,rc=0):
+    print("DisConnected result code "+str(rc))
+    client.loop_stop()
         
+    
 def crosswalk(direction, client):
     timer = 10
     
@@ -83,9 +91,25 @@ def crosswalk(direction, client):
     
         
 def run():
-    client = connect_mqtt()
-    th.Thread(target=subscribe(client))
-    client.loop_forever()
+    
+    for i  in range(nclients):
+        cname ="Client"+str(i)
+        client = connect_mqtt(cname, broker, port)
+        clients.append(client)
+    for client in clients:
+        client.connect(broker)
+        print(client)
+        
+        #client.loop_start()
+         
+    # subClient = connect_mqtt(client_idSub, broker, port)
+    # pubClient = connect_mqtt(client_idPub, broker, port)
+    subscribe(clients[0])
+    th.Thread(target=clients[0].loop_forever())
     
 if __name__ == '__main__':
-    run()
+    try:
+        run()
+    except KeyboardInterrupt:
+        for client in clients:
+            client.loop_stop()
